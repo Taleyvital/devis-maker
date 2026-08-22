@@ -22,14 +22,11 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   const supabase = serverSupabase();
-  const { data: { user }, error: authErr } = await supabase.auth.getUser();
-  if (authErr || !user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
 
   const { error } = await supabase
     .from("chat_sessions")
     .delete()
-    .eq("id", params.id)
-    .eq("user_id", user.id);
+    .eq("id", params.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });

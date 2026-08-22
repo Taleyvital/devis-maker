@@ -22,9 +22,6 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const supabase = serverSupabase();
-  const { data: { user }, error: authErr } = await supabase.auth.getUser();
-  if (authErr || !user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-
   const [messagesRes, sessionRes] = await Promise.all([
     supabase
       .from("chat_messages")
@@ -35,7 +32,6 @@ export async function GET(
       .from("chat_sessions")
       .select("devis_data")
       .eq("id", params.id)
-      .eq("user_id", user.id)
       .single(),
   ]);
 
@@ -53,9 +49,6 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   const supabase = serverSupabase();
-  const { data: { user }, error: authErr } = await supabase.auth.getUser();
-  if (authErr || !user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-
   const { messages, devis_data } = await req.json();
   if (!Array.isArray(messages) || messages.length === 0) {
     return NextResponse.json({ error: "Messages invalides" }, { status: 400 });
@@ -75,8 +68,7 @@ export async function POST(
         updated_at: new Date().toISOString(),
         ...(devis_data ? { devis_data } : {}),
       })
-      .eq("id", params.id)
-      .eq("user_id", user.id),
+      .eq("id", params.id),
   ]);
 
   if (insertRes.error) return NextResponse.json({ error: insertRes.error.message }, { status: 500 });

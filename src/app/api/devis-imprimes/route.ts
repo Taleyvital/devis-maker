@@ -18,9 +18,6 @@ function serverSupabase() {
 
 export async function POST(req: NextRequest) {
   const supabase = serverSupabase();
-  const { data: { user }, error: authErr } = await supabase.auth.getUser();
-  if (authErr || !user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-
   const devis = await req.json();
   const totalMat = (devis.lignes ?? []).reduce(
     (acc: number, l: { montant?: string | number }) => acc + (parseFloat(String(l.montant)) || 0),
@@ -30,7 +27,6 @@ export async function POST(req: NextRequest) {
   const total = totalMat + mo;
 
   const { error } = await supabase.from("devis_imprimes").insert({
-    user_id:        user.id,
     client_nom:     devis.client_nom     || "",
     client_contact: devis.client_contact || "",
     client_objet:   devis.client_objet   || "",
@@ -46,8 +42,6 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   const supabase = serverSupabase();
-  const { data: { user }, error: authErr } = await supabase.auth.getUser();
-  if (authErr || !user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
 
   const { data, error } = await supabase
     .from("devis_imprimes")

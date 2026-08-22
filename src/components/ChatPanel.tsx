@@ -69,7 +69,7 @@ export default function ChatPanel({ devis, onUpdate, messages, setMessages, onDe
   };
 
   // Créer ou obtenir la session courante
-  const ensureSession = async (firstUserMessage: string): Promise<string> => {
+  const ensureSession = async (firstUserMessage: string): Promise<string | null> => {
     if (currentSessionId) return currentSessionId;
     const titre = firstUserMessage.slice(0, 60) + (firstUserMessage.length > 60 ? "…" : "");
     const r = await fetch("/api/chat-sessions", {
@@ -77,7 +77,12 @@ export default function ChatPanel({ devis, onUpdate, messages, setMessages, onDe
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ titre }),
     });
-    const session = await r.json();
+    const session = await r.json().catch(() => null);
+    if (!r.ok || !session || !session.id) {
+      // Could not create session (likely unauthorized). Do not return an id.
+      console.error("Failed to create chat session", session);
+      return null;
+    }
     setCurrentSessionId(session.id);
     return session.id;
   };
@@ -153,7 +158,12 @@ export default function ChatPanel({ devis, onUpdate, messages, setMessages, onDe
 
       // Sauvegarder avec le devis à jour (pas l'ancien état stale)
       const sessionId = await ensureSession(text);
-      saveMessages(sessionId, [userMsg, assistantMsg], updatedDevis);
+      if (sessionId) {
+        saveMessages(sessionId, [userMsg, assistantMsg], updatedDevis);
+      } else {
+        // If session couldn't be created (e.g. unauthenticated), log and skip saving.
+        console.warn("Session not available — messages not saved.");
+      }
 
     } catch {
       setMessages((prev) => [
