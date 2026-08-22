@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import type { ChatMessage, DevisData } from "@/lib/types";
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-
 const today = new Date().toISOString().split("T")[0];
 
 const SYSTEM_PROMPT = `Tu es un assistant expert pour Tutto Legno, menuiserie industrielle basée à Abidjan, Côte d'Ivoire. Tu aides à créer et MODIFIER des devis en conversation naturelle.
@@ -65,6 +63,10 @@ export async function POST(req: NextRequest) {
       console.error("[chat/route] GROQ_API_KEY not set");
       return NextResponse.json({ message: "Erreur serveur. GROQ_API_KEY non configurée.", update: null }, { status: 500 });
     }
+
+    // Instantiate the Groq client at runtime so the env var is read when the
+    // function executes (avoids build-time failures and stale env snapshots).
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
     const {
       messages,
       currentDevis,
@@ -88,7 +90,13 @@ Si l'utilisateur demande une modification, base-toi sur cet état pour savoir ce
     });
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
-    const parsed = JSON.parse(raw);
+    let parsed = {} as any;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (parseErr) {
+      console.error('[chat/route] failed to parse model output', parseErr, raw);
+      return NextResponse.json({ message: 'Erreur serveur. Réponse Groq invalide.', update: null }, { status: 500 });
+    }
 
     return NextResponse.json({
       message: parsed.message ?? "Devis mis à jour.",
@@ -96,8 +104,10 @@ Si l'utilisateur demande une modification, base-toi sur cet état pour savoir ce
     });
   } catch (err) {
     console.error("[chat/route]", err);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    const errStack = err instanceof Error && err.stack ? err.stack : undefined;
     return NextResponse.json(
-      { message: "Erreur serveur. Vérifiez la clé API Groq.", update: null },
+      { message: `Erreur serveur: ${errMsg}`, update: null, debug: errStack },
       { status: 500 }
     );
   }
