@@ -27,6 +27,10 @@ function genererLienWhatsApp(tel: string, message: string): string {
 
 export async function POST(req: NextRequest) {
   try {
+    if (!process.env.GROQ_API_KEY) {
+      console.error("[prospection/generate] GROQ_API_KEY not set");
+      return NextResponse.json({ error: "Erreur serveur. GROQ_API_KEY non configurée" }, { status: 500 });
+    }
     const { prospect_id, nom_entreprise, secteur, telephone } = await req.json();
 
     if (!nom_entreprise || !prospect_id) {

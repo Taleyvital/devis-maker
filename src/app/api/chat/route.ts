@@ -61,6 +61,10 @@ Exemple :
 
 export async function POST(req: NextRequest) {
   try {
+    if (!process.env.GROQ_API_KEY) {
+      console.error("[chat/route] GROQ_API_KEY not set");
+      return NextResponse.json({ message: "Erreur serveur. GROQ_API_KEY non configurée.", update: null }, { status: 500 });
+    }
     const {
       messages,
       currentDevis,
