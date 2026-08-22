@@ -84,7 +84,7 @@ Si l'utilisateur demande une modification, base-toi sur cet état pour savoir ce
       ],
       response_format: { type: "json_object" },
       temperature: 0.3,
-      max_tokens: 1024,
+      max_tokens: 1025,
     });
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
