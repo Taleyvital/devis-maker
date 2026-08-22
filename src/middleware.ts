@@ -39,9 +39,27 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user: any = null;
+  try {
+    const fetchUser = supabase.auth.getUser();
+
+    // Prevent middleware from waiting too long for Supabase (avoid 504s).
+    // If Supabase doesn't respond within 800ms, allow the request through
+    // to avoid blocking the edge middleware.
+    const res = (await Promise.race([
+      fetchUser,
+      new Promise((resolve) => setTimeout(() => resolve({ timeout: true }), 800)),
+    ])) as any;
+
+    if (res && res.timeout) {
+      return supabaseResponse;
+    }
+
+    user = res?.data?.user ?? null;
+  } catch (e) {
+    // On error, don't block the request from proceeding.
+    return supabaseResponse;
+  }
 
   const isLogin = path.startsWith("/login");
 
